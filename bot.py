@@ -1,6 +1,22 @@
 import telebot
 from telebot import types
 import requests
+from flask import Flask
+from threading import Thread
+
+# Render ወደብ እንዲያገኝ የሚረዳ አነስተኛ Web Server
+app = Flask('')
+
+@app.route('/')
+def home():
+    return "Bot is running 24/7!"
+
+def run():
+    app.run(host='0.0.0.0', port=8080)
+
+def keep_alive():
+    t = Thread(target=run)
+    t.start()
 
 # 1. መሰረታዊ መረጃዎች
 BOT_TOKEN = "8933234159:AAFRgSyYYwdJS4B06TW7DEtsjAq3v1pTnGE"
@@ -8,7 +24,6 @@ ADMIN_CHAT_ID = 7784016689
 HUBX_API_KEY = "rsk_live_4b9e7da5dbdc4fa20bdde731819ae5cf4e6d9b2a53a18586"
 BASE_URL = "https://open-greeting-glow-production.up.railway.app/api/public/reseller/v1"
 
-# የክፍያ መረጃ
 PRICE_BIRR = 500
 TELEBIRR_PHONE = "0944905958"
 ACCOUNT_NAME = "Biniyam Ayichew"
@@ -20,19 +35,16 @@ HEADERS = {
     "Content-Type": "application/json"
 }
 
-# /start ሲባል የሚላክ
 @bot.message_handler(commands=['start'])
 def start_handler(message):
     markup = types.InlineKeyboardMarkup()
     markup.add(types.InlineKeyboardButton("✨ Gemini Pro ግዛ (500 ETB)", callback_data="buy_gemini"))
-    
     welcome_text = (
         "👋 <b>እንኳን ወደ Gemini AI Pro መሸጫ ቦት በሰላም መጡ!</b>\n\n"
         "ፈጣን እና አስተማማኝ አገልግሎት ለማግኘት ከታች ያለውን ይጫኑ፦"
     )
     bot.reply_to(message, welcome_text, reply_markup=markup, parse_mode="HTML")
 
-# ግዛ የሚለውን ቁልፍ ሲጫኑ
 @bot.callback_query_handler(func=lambda call: call.data == "buy_gemini")
 def buy_click(call):
     pay_text = (
@@ -44,7 +56,6 @@ def buy_click(call):
     )
     bot.send_message(call.message.chat.id, pay_text, parse_mode="HTML")
 
-# ደረሰኝ ፎቶ ሲልኩ
 @bot.message_handler(content_types=['photo'])
 def receive_screenshot(message):
     user_id = message.chat.id
@@ -68,7 +79,6 @@ def receive_screenshot(message):
     bot.send_photo(ADMIN_CHAT_ID, photo_id, caption=caption, reply_markup=markup, parse_mode="HTML")
     bot.reply_to(message, "✅ ደረሰኝዎ ደርሶናል! አስተዳዳሪው ክፍያውን ሲያረጋግጥ አካውንቱ/ቁልፉ ወዲያውኑ ይላክልዎታል።")
 
-# አስተዳዳሪው አጽድቅ ወይም ሰርዝ ሲል
 @bot.callback_query_handler(func=lambda call: call.data.startswith("approve_") or call.data.startswith("reject_"))
 def admin_action(call):
     action, target_user_id = call.data.split("_")
@@ -88,7 +98,6 @@ def admin_action(call):
         )
         bot.answer_callback_query(call.id, "ትዕዛዙ እየተስተናገደ ነው...")
 
-        # ከHubX API ማዘዝ
         payload = {"quantity": 1}
         try:
             res = requests.post(f"{BASE_URL}/orders", headers=HEADERS, json=payload)
@@ -120,5 +129,9 @@ def admin_action(call):
         bot.send_message(target_user_id, "❌ የላኩት ደረሰኝ ትክክል ስላልሆነ ክፍያዎ አልተፈቀደም። እባክዎ እንደገና ይሞክሩ ወይም አስተዳዳሪውን ያነጋግሩ።")
         bot.answer_callback_query(call.id, "ትዕዛዙ ተሰርዟል!")
 
+# Web Server ማስነሻ
+keep_alive()
+
 print("ቦቱ እየሰራ ነው...")
 bot.infinity_polling()
+                
